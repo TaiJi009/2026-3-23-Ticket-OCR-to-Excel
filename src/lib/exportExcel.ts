@@ -5,7 +5,7 @@ export type ExportMode = "separate" | "merged";
 
 type Row = Record<string, string | number | null>;
 
-const COL_WIDTHS = [{ wch: 16 }, { wch: 18 }, { wch: 24 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }];
+const COL_WIDTHS = [{ wch: 18 }, { wch: 20 }, { wch: 24 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
 
 function safeSheetName(name: string): string {
   return name.replace(/[\\/*?:[\]]/g, "_").slice(0, 31) || "小票";
@@ -14,18 +14,43 @@ function safeSheetName(name: string): string {
 function buildReceiptRows(entry: QueueFile, index: number): Row[] {
   const result = entry.result!;
   const rows: Row[] = [];
+  const date = result.date ?? "未知时间";
+  const store = result.storeName ?? "未知超市";
 
-  rows.push({ 店铺: result.storeName ?? "未知超市", 购物时间: result.date ?? "未知时间", 商品名称: "", 单价: "", 数量: "", 小计: "", 合计: "" });
-  rows.push({ 店铺: "", 购物时间: "", 商品名称: "商品名称", 单价: "单价", 数量: "数量", 小计: "小计", 合计: "" });
-
-  result.items.forEach((item) => {
-    rows.push({ 店铺: "", 购物时间: "", 商品名称: item.name, 单价: item.price, 数量: item.quantity, 小计: item.subtotal, 合计: "" });
+  rows.push({
+    购物时间: "购物时间",
+    超市名称: "超市名称",
+    商品名称: "商品名称",
+    数量: "数量",
+    单价: "单价",
+    小计: "小计",
+    合计: "合计"
   });
 
-  rows.push({ 店铺: "", 购物时间: "", 商品名称: "", 单价: "", 数量: "", 小计: "", 合计: result.total });
+  result.items.forEach((item) => {
+    rows.push({
+      购物时间: date,
+      超市名称: store,
+      商品名称: item.name,
+      数量: item.quantity,
+      单价: item.price,
+      小计: item.subtotal,
+      合计: ""
+    });
+  });
+
+  rows.push({
+    购物时间: date,
+    超市名称: store,
+    商品名称: "",
+    数量: "",
+    单价: "",
+    小计: "",
+    合计: result.total
+  });
 
   // blank separator row (used by merged mode)
-  rows.push({ 店铺: `__SEP__${index}`, 购物时间: "", 商品名称: "", 单价: "", 数量: "", 小计: "", 合计: "" });
+  rows.push({ 购物时间: "", 超市名称: `__SEP__${index}`, 商品名称: "", 数量: "", 单价: "", 小计: "", 合计: "" });
 
   return rows;
 }
@@ -33,7 +58,7 @@ function buildReceiptRows(entry: QueueFile, index: number): Row[] {
 function exportSeparate(files: QueueFile[]): XLSX.WorkBook {
   const workbook = XLSX.utils.book_new();
   files.forEach((entry, index) => {
-    const rows = buildReceiptRows(entry, index).filter((r) => !String(r["店铺"]).startsWith("__SEP__"));
+    const rows = buildReceiptRows(entry, index).filter((r) => !String(r["超市名称"]).startsWith("__SEP__"));
     const ws = XLSX.utils.json_to_sheet(rows, { skipHeader: true });
     ws["!cols"] = COL_WIDTHS;
     const nameSource = `${entry.result!.storeName ?? "小票"}-${entry.result!.date ?? index + 1}`;
