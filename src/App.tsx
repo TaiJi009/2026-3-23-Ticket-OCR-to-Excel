@@ -1,5 +1,5 @@
 import { Download, LoaderCircle, Play, Trash2, X, ZoomIn } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ApiKeyInput from "./components/ApiKeyInput";
 import ImageUploader from "./components/ImageUploader";
 import ReceiptTable from "./components/ReceiptTable";
@@ -27,6 +27,11 @@ export default function App() {
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [exportMode, setExportMode] = useState<ExportMode>("separate");
+  const queueRef = useRef(queue);
+
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -35,9 +40,9 @@ export default function App() {
 
   useEffect(() => {
     return () => {
-      queue.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      queueRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
     };
-  }, [queue]);
+  }, []);
 
   const selected = useMemo(
     () => queue.find((item) => item.id === selectedId) ?? queue[0] ?? null,

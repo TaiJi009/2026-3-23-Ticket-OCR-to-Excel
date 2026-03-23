@@ -37,12 +37,22 @@ function normalizeReceipt(raw: unknown): Receipt {
   return {
     storeName: parsed.storeName ?? null,
     date: parsed.date ?? null,
-    items: (parsed.items ?? []).map((item) => ({
-      name: item.name?.trim() || "",
-      price: toNumber(item.price),
-      quantity: toNumber(item.quantity),
-      subtotal: toNumber(item.subtotal)
-    })),
+    items: (parsed.items ?? []).map((item) => {
+      const price = toNumber(item.price);
+      const quantity = toNumber(item.quantity);
+      const subtotal = toNumber(item.subtotal);
+
+      // 若单价和数量均缺失，则以小计（或合计）作为单价，数量默认 1
+      const resolvedQuantity = quantity ?? (price === null ? 1 : null);
+      const resolvedPrice = price ?? (resolvedQuantity !== null ? subtotal : null);
+
+      return {
+        name: item.name?.trim() || "",
+        price: resolvedPrice,
+        quantity: resolvedQuantity,
+        subtotal
+      };
+    }),
     total: toNumber(parsed.total)
   };
 }
@@ -65,7 +75,9 @@ export async function recognizeReceipt(file: File, apiKey: string): Promise<Rece
   const prompt =
     "请识别这张超市购物小票，提取以下信息并只返回 JSON，不要任何解释文字或代码块：" +
     '{ "date":"YYYY-MM-DD HH:mm", "storeName":"超市名称", "items":[{"name":"商品名称","price":数字,"quantity":数字,"subtotal":数字}], "total":数字 }' +
-    "。如字段缺失请返回 null；数字字段必须是数字而不是字符串。";
+    "。规则：①字段缺失返回 null；②数字字段必须是数字类型；" +
+    "③若小票上某商品没有单独列出单价或数量，price 和 quantity 均返回 null，subtotal 填该行金额；" +
+    "④若小票上只有一个总金额而无商品明细，items 返回空数组。";
 
   const response = await fetch(API_URL, {
     method: "POST",
