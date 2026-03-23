@@ -1,5 +1,5 @@
 import { Download, LoaderCircle, Play, Trash2, X, ZoomIn } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ApiKeyInput from "./components/ApiKeyInput";
 import ImageUploader from "./components/ImageUploader";
 import ReceiptTable from "./components/ReceiptTable";
@@ -28,7 +28,11 @@ export default function App() {
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lightboxZoom, setLightboxZoom] = useState(1);
+  const [lightboxPan, setLightboxPan] = useState({ x: 0, y: 0 });
+  const [lightboxDragging, setLightboxDragging] = useState(false);
   const lightboxRef = useRef<HTMLDivElement>(null);
+  const lightboxDragOriginRef = useRef({ startX: 0, startY: 0, panX: 0, panY: 0 });
+  const lightboxWasDraggingRef = useRef(false);
   const [exportMode, setExportMode] = useState<ExportMode>("separate");
   const queueRef = useRef(queue);
 
@@ -39,7 +43,43 @@ export default function App() {
   const closeLightbox = useCallback(() => {
     setLightboxUrl(null);
     setLightboxZoom(1);
+    setLightboxPan({ x: 0, y: 0 });
+    setLightboxDragging(false);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!lightboxDragging) return;
+    const onMove = (e: PointerEvent) => {
+      const o = lightboxDragOriginRef.current;
+      setLightboxPan({
+        x: o.panX + (e.clientX - o.startX),
+        y: o.panY + (e.clientY - o.startY)
+      });
+    };
+    const onUp = () => {
+      setLightboxDragging(false);
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+    };
+  }, [lightboxDragging]);
+
+  /** 仅在一次拖动结束（true→false）时归零，避免误触其它时机 */
+  useEffect(() => {
+    if (!lightboxUrl) {
+      lightboxWasDraggingRef.current = false;
+      return;
+    }
+    if (lightboxWasDraggingRef.current && !lightboxDragging) {
+      setLightboxPan({ x: 0, y: 0 });
+    }
+    lightboxWasDraggingRef.current = lightboxDragging;
+  }, [lightboxUrl, lightboxDragging]);
 
   useEffect(() => {
     if (!lightboxUrl) return;
@@ -230,6 +270,8 @@ export default function App() {
                     onClick={(event) => {
                       event.stopPropagation();
                       setLightboxZoom(1);
+                      setLightboxPan({ x: 0, y: 0 });
+                      setLightboxDragging(false);
                       setLightboxUrl(item.previewUrl);
                     }}
                   >
@@ -326,6 +368,8 @@ export default function App() {
                   className="group/preview relative cursor-zoom-in"
                   onClick={() => {
                     setLightboxZoom(1);
+                    setLightboxPan({ x: 0, y: 0 });
+                    setLightboxDragging(false);
                     setLightboxUrl(selected.previewUrl);
                   }}
                 >
@@ -371,17 +415,46 @@ export default function App() {
             </div>
           )}
 
-          <img
-            src={lightboxUrl}
-            alt="图片预览"
-            className="max-h-[90vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
-            style={{ transform: `scale(${lightboxZoom})`, transition: "transform 0.1s ease" }}
+          <div
+            className={`flex max-h-[90vh] max-w-[90vw] select-none items-center justify-center ${lightboxDragging ? "cursor-grabbing" : "cursor-grab"}`}
+            style={{ touchAction: "none" }}
             onClick={(event) => event.stopPropagation()}
-            onDoubleClick={() => setLightboxZoom(1)}
-          />
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              event.stopPropagation();
+              event.preventDefault();
+              lightboxDragOriginRef.current = {
+                startX: event.clientX,
+                startY: event.clientY,
+                panX: lightboxPan.x,
+                panY: lightboxPan.y
+              };
+              setLightboxDragging(true);
+            }}
+          >
+            <div
+              style={{
+                transform: `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})`,
+                transformOrigin: "center center",
+                transition: lightboxDragging ? "none" : "transform 0.2s ease"
+              }}
+            >
+              <img
+                src={lightboxUrl}
+                alt="图片预览"
+                draggable={false}
+                className="max-h-[90vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
+                onDoubleClick={(event) => {
+                  event.stopPropagation();
+                  setLightboxZoom(1);
+                  setLightboxPan({ x: 0, y: 0 });
+                }}
+              />
+            </div>
+          </div>
 
-          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-white/50">
-            滚轮缩放 · 双击重置
+          <p className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-white/50">
+            滚轮缩放 · 按住左键拖动 · 松手归中 · 双击重置缩放
           </p>
         </div>
       )}
