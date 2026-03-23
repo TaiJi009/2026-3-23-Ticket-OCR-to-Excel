@@ -124,7 +124,7 @@ export default function App() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <div>
             <h1 className="text-lg font-bold">超市小票识别助手</h1>
-            <p className="text-xs text-gray-600 dark:text-gray-400">上传图片 -> AI 识别 -> 校对 -> 导出 Excel</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">上传图片 -&gt; AI 识别 -&gt; 校对 -&gt; 导出 Excel</p>
           </div>
           <ThemeToggle
             theme={theme}
