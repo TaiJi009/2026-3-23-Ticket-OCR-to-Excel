@@ -429,7 +429,7 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
 
           {/* 右侧上：API / 上传 / 队列（大屏横向三列） */}
           <section className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-stretch lg:gap-3">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-stretch lg:gap-4">
               <div className="min-w-0">
                 <ApiKeyInput
                   mode={apiKeySourceMode}
@@ -444,27 +444,29 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
               </div>
               <div className="min-w-0 flex min-h-0 flex-col">
                 <section className="card flex h-full min-h-0 flex-col">
-            <div className="mb-3 flex shrink-0 items-center justify-between">
-              <h2 className="text-sm font-semibold">待识别队列</h2>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">待识别队列</h2>
+              <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
                 已完成 {completedCount}/{queue.length}
               </span>
             </div>
-            <div className="grid min-h-[min(8rem,30vh)] flex-1 gap-2 overflow-y-auto pr-1 lg:min-h-0">
+            <div className="grid min-h-[min(8rem,30vh)] flex-1 gap-0 overflow-y-auto pr-0.5 lg:min-h-0">
               {queue.length === 0 && (
-                <p className="rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-600 dark:bg-gray-700/40 dark:text-gray-300">
+                <p className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-600 dark:bg-slate-700/50 dark:text-slate-300">
                   还没有上传图片
                 </p>
               )}
+              {queue.length > 0 && (
+                <div className="divide-y divide-slate-200 dark:divide-slate-600/50">
               {queue.map((item) => (
                 <button
                   type="button"
                   key={item.id}
                   onClick={() => setSelectedId(item.id)}
-                  className={`group flex items-center gap-3 rounded-xl border p-2 text-left transition-colors ${
+                  className={`group flex w-full items-center gap-3 py-2.5 pl-0.5 pr-0 text-left transition-colors ${
                     selected?.id === item.id
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
-                      : "border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/40"
+                      ? "bg-blue-50/90 dark:bg-blue-950/35"
+                      : "hover:bg-slate-50 dark:hover:bg-slate-700/35"
                   }`}
                 >
                   <div
@@ -483,8 +485,8 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm">{item.file.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="truncate text-sm text-slate-800 dark:text-slate-100">{item.file.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {item.status === "pending" && "等待中"}
                       {item.status === "processing" && "识别中..."}
                       {item.status === "success" && "已完成"}
@@ -501,7 +503,7 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
                       <>
                         <button
                           type="button"
-                          className="touch-manipulation rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-blue-600 dark:hover:bg-gray-700/80 dark:hover:text-blue-400"
+                          className="touch-manipulation rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-600/60 dark:hover:text-blue-400"
                           title="重新识别此图"
                           aria-label="重新识别此图"
                           onClick={(event) => {
@@ -513,7 +515,7 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
                         </button>
                         <button
                           type="button"
-                          className="touch-manipulation rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-700/80"
+                          className="touch-manipulation rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-red-500 dark:hover:bg-slate-600/60"
                           title="移除"
                           aria-label="移除"
                           onClick={(event) => {
@@ -528,16 +530,18 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
                   </span>
                 </button>
               ))}
+                </div>
+              )}
             </div>
             {queue.some((item) => item.status === "success") && (
-              <div className="mt-3 flex items-center gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-700/50">
+              <div className="mt-3 flex shrink-0 items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-700/70">
                 <button
                   type="button"
                   onClick={() => setExportMode("separate")}
                   className={`min-h-10 flex-1 touch-manipulation rounded-md px-2 py-2 text-xs font-medium transition-colors sm:min-h-0 sm:py-1 ${
                     exportMode === "separate"
-                      ? "bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-gray-100"
-                      : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      ? "bg-white text-slate-900 shadow-sm dark:bg-slate-600 dark:text-slate-100"
+                      : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
                 >
                   分 Sheet
@@ -547,18 +551,18 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
                   onClick={() => setExportMode("merged")}
                   className={`min-h-10 flex-1 touch-manipulation rounded-md px-2 py-2 text-xs font-medium transition-colors sm:min-h-0 sm:py-1 ${
                     exportMode === "merged"
-                      ? "bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-gray-100"
-                      : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      ? "bg-white text-slate-900 shadow-sm dark:bg-slate-600 dark:text-slate-100"
+                      : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
                 >
                   合并汇总
                 </button>
               </div>
             )}
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <div className="mt-3 flex shrink-0 gap-2.5">
               <button
                 type="button"
-                className="btn-primary w-full flex-1 justify-center sm:w-auto"
+                className="btn-primary min-h-11 flex-[1.65] justify-center px-3 sm:min-h-0"
                 onClick={runRecognition}
                 disabled={isRecognizing || queue.length === 0}
               >
@@ -567,7 +571,7 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
               </button>
               <button
                 type="button"
-                className="btn-secondary w-full flex-1 justify-center sm:w-auto"
+                className="btn-secondary min-h-11 flex-1 justify-center px-3 sm:min-h-0"
                 onClick={exportExcel}
                 disabled={queue.every((item) => item.status !== "success")}
               >

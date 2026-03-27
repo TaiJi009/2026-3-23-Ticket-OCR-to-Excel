@@ -20,9 +20,9 @@ export default function ApiKeyInput({ mode, onModeChange, customKeyValue, onSave
 
   return (
     <section className={`card flex min-h-0 flex-col ${className ?? ""}`}>
-      <div className="mb-3 flex flex-wrap items-center gap-2 text-gray-800 dark:text-gray-200">
-        <KeyRound className="h-4 w-4" />
-        <h2 className="text-sm font-semibold">智谱 API Key</h2>
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-slate-800 dark:text-slate-100">
+        <KeyRound className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
+        <h2 className="text-sm font-semibold tracking-tight">智谱 API Key</h2>
         {mode === "builtin" && (
           <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
             站点默认 API
@@ -35,7 +35,7 @@ export default function ApiKeyInput({ mode, onModeChange, customKeyValue, onSave
         )}
       </div>
 
-      <div className="mb-3 flex rounded-lg bg-gray-100 p-1 dark:bg-gray-700/50">
+      <div className="mb-3 flex rounded-lg bg-gray-100 p-1 dark:bg-slate-700/70">
         <button
           type="button"
           onClick={() => onModeChange("builtin")}
@@ -61,12 +61,12 @@ export default function ApiKeyInput({ mode, onModeChange, customKeyValue, onSave
       </div>
 
       {mode === "builtin" ? (
-        <p className="text-xs text-gray-600 dark:text-gray-400">
+        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
           将使用站点内置的智谱大模型 API Key，无需填写。若你有自己的 Key 或希望单独计费，可切换到「使用我自己的 Key」。
         </p>
       ) : (
         <>
-          <p className="mb-3 text-xs text-gray-600 dark:text-gray-400">
+          <p className="mb-3 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
             仅使用你下方填写并保存的 Key（保存在本机 localStorage，不经由本站服务器）。切换回「站点默认」后不会删除已保存内容。
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">

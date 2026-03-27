@@ -23,8 +23,8 @@ export default function App() {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 transition-colors duration-200 dark:bg-gray-900 dark:text-gray-100">
-      <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-gray-700 dark:bg-gray-800/90">
+    <div className="min-h-screen bg-gray-50 text-gray-900 transition-colors duration-200 dark:bg-slate-950 dark:text-slate-100">
+      <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/95">
         <div className="mx-auto max-w-7xl px-3 sm:px-4">
           {/* 第一行：固定站点标题 + 右侧 API 状态、主题切换 */}
           <div className="flex items-start justify-between gap-3 py-3 sm:items-center sm:py-3.5">
@@ -77,7 +77,7 @@ export default function App() {
           </div>
 
           {/* 第二行：主导航 A / B */}
-          <div className="border-t border-gray-200/80 py-2.5 dark:border-gray-700/80">
+          <div className="border-t border-gray-200/80 py-2.5 dark:border-slate-700/80">
             <nav
               className="flex w-fit items-center gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-700/50"
               aria-label="主导航"
