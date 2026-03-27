@@ -474,28 +474,28 @@ export default function ReceiptOcrPage() {
                 <ImageUploader onAddFiles={handleRequestAddFiles} className="min-h-0 flex-1" />
               </div>
               {/* 子集 B */}
-              <div className="flex min-h-0 min-w-0 flex-col">
-                <section className="card flex h-full min-h-0 flex-col">
+              <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+                <section className="card flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
             <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">待识别队列</h2>
               <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
                 已完成 {completedCount}/{queue.length}
               </span>
             </div>
-            <div className="grid min-h-[min(8rem,30vh)] flex-1 gap-0 overflow-y-auto pr-0.5 lg:min-h-0">
+            <div className="flex min-h-[min(8rem,30vh)] min-w-0 flex-1 flex-col gap-0 overflow-x-hidden overflow-y-auto pr-0.5 lg:min-h-0">
               {queue.length === 0 && (
                 <p className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-600 dark:bg-slate-700/50 dark:text-slate-300">
                   还没有上传图片
                 </p>
               )}
               {queue.length > 0 && (
-                <div className="divide-y divide-slate-200 dark:divide-slate-600/50">
+                <div className="min-w-0 divide-y divide-slate-200 dark:divide-slate-600/50">
               {queue.map((item) => (
                 <button
                   type="button"
                   key={item.id}
                   onClick={() => setSelectedId(item.id)}
-                  className={`group flex w-full items-center gap-3 py-2.5 pl-0.5 pr-0 text-left transition-colors ${
+                  className={`group flex w-full min-w-0 max-w-full items-center gap-2 py-2.5 pl-0.5 pr-1 text-left transition-colors sm:gap-3 ${
                     selected?.id === item.id
                       ? "bg-blue-50/90 dark:bg-blue-950/35"
                       : "hover:bg-slate-50 dark:hover:bg-slate-700/35"
@@ -516,9 +516,11 @@ export default function ReceiptOcrPage() {
                       <ZoomIn className="h-5 w-5 text-white opacity-80 drop-shadow transition-opacity md:opacity-0 md:group-hover/thumb:opacity-100" />
                     </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm text-slate-800 dark:text-slate-100">{item.file.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <p className="truncate text-sm text-slate-800 dark:text-slate-100" title={item.file.name}>
+                      {item.file.name}
+                    </p>
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                       {item.status === "pending" && "等待中"}
                       {item.status === "processing" && "识别中..."}
                       {item.status === "success" && "已完成"}
@@ -526,7 +528,7 @@ export default function ReceiptOcrPage() {
                     </p>
                     {item.errorMessage && <p className="truncate text-xs text-red-500">{item.errorMessage}</p>}
                   </div>
-                  <span className="flex shrink-0 items-center gap-0.5">
+                  <span className="ml-auto flex shrink-0 items-center gap-0.5 self-center">
                     {item.status === "processing" ? (
                       <span className="rounded-full p-1.5">
                         <LoaderCircle className="h-4 w-4 animate-spin text-blue-500" />
