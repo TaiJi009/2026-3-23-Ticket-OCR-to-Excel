@@ -93,34 +93,58 @@ function visionUserMessage(imageDataUrl: string, prompt: string): VisionMsg {
   };
 }
 
-async function postChatCompletion(
-  url: string,
-  apiKey: string,
-  body: Record<string, unknown>
-): Promise<string> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey.trim()}`
-    },
-    body: JSON.stringify(body)
-  });
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`识别失败: ${response.status} ${errorText}`);
+/** 识别请求遇 429/503 时退避重试，减轻服务商限流导致的批量失败 */
+async function postChatCompletion(url: string, apiKey: string, body: Record<string, unknown>): Promise<string> {
+  const maxRetries = 5;
+  let lastErr: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey.trim()}`
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (response.status === 429 || response.status === 503) {
+      const errorText = await response.text();
+      lastErr = new Error(`识别失败: ${response.status} ${errorText}`);
+      if (attempt >= maxRetries) throw lastErr;
+      const ra = response.headers.get("Retry-After");
+      let waitMs: number;
+      if (ra) {
+        const sec = parseInt(ra, 10);
+        waitMs = Number.isFinite(sec) ? Math.min(120_000, Math.max(0, sec) * 1000) : 2000 * 2 ** attempt;
+      } else {
+        waitMs = Math.min(60_000, 1500 * 2 ** attempt + Math.random() * 800);
+      }
+      await sleep(waitMs);
+      continue;
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`识别失败: ${response.status} ${errorText}`);
+    }
+
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error("模型没有返回识别内容。");
+    }
+    return content;
   }
 
-  const data = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error("模型没有返回识别内容。");
-  }
-  return content;
+  throw lastErr ?? new Error("识别失败");
 }
 
 /** 连通性测试（各品牌用最轻量的文本请求） */

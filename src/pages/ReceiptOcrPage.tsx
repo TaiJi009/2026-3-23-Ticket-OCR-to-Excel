@@ -40,7 +40,10 @@ function newQueueFile(file: File): QueueFile {
   };
 }
 
-/** 队列中多张图片并行识别，完成后各自更新 success / error */
+/** 同时进行的识别数上限，避免与智谱等平台并发/QPS 限制冲突导致大量 429 */
+const RECOGNITION_CONCURRENCY = 3;
+
+/** 队列中多张图片限并发识别，完成后各自更新 success / error */
 async function recognizeEntriesInParallel(
   entries: QueueFile[],
   provider: LlmProviderId,
@@ -53,8 +56,12 @@ async function recognizeEntriesInParallel(
     prev.map((item) => (idSet.has(item.id) ? { ...item, status: "processing", errorMessage: undefined } : item))
   );
 
-  await Promise.all(
-    entries.map(async (entry) => {
+  let next = 0;
+  const worker = async () => {
+    while (true) {
+      const i = next++;
+      if (i >= entries.length) return;
+      const entry = entries[i]!;
       try {
         const result = await recognizeReceipt(entry.file, provider, apiKey);
         setQueue((prev) =>
@@ -68,8 +75,11 @@ async function recognizeEntriesInParallel(
           prev.map((item) => (item.id === entry.id ? { ...item, status: "error", errorMessage: message } : item))
         );
       }
-    })
-  );
+    }
+  };
+
+  const pool = Math.min(RECOGNITION_CONCURRENCY, entries.length);
+  await Promise.all(Array.from({ length: pool }, () => worker()));
 }
 
 export default function ReceiptOcrPage() {
