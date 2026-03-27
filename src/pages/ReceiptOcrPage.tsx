@@ -1,4 +1,4 @@
-import { Download, LoaderCircle, Play, Trash2, X, ZoomIn } from "lucide-react";
+import { Download, LoaderCircle, Play, RefreshCw, Trash2, X, ZoomIn } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ApiKeyInput from "../components/ApiKeyInput";
 import ImageUploader from "../components/ImageUploader";
@@ -117,6 +117,18 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
   }, [lightboxUrl]);
 
   useEffect(() => {
+    if (!lightboxUrl) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeLightbox();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [lightboxUrl, closeLightbox]);
+
+  useEffect(() => {
     if (!effectiveApiKey.trim()) {
       setApiStatus("error");
       return;
@@ -199,7 +211,6 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
 
     setIsRecognizing(true);
     for (const entry of queue) {
-      if (entry.status === "success") continue;
       setQueue((prev) => prev.map((item) => (item.id === entry.id ? { ...item, status: "processing", errorMessage: undefined } : item)));
       try {
         const result = await recognizeReceipt(entry.file, effectiveApiKey);
@@ -217,6 +228,37 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
     }
     setIsRecognizing(false);
     showToast("批量识别已结束。");
+  };
+
+  const reRecognizeOne = async (id: string) => {
+    if (!effectiveApiKey.trim()) {
+      showToast(
+        apiKeySourceMode === "custom"
+          ? "当前为自定义 API：请先填写并保存你的智谱 API Key。"
+          : "站点默认 API 不可用，请联系管理员。"
+      );
+      return;
+    }
+    const entry = queueRef.current.find((item) => item.id === id);
+    if (!entry || entry.status === "processing") return;
+
+    setQueue((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status: "processing", errorMessage: undefined } : item))
+    );
+    try {
+      const result = await recognizeReceipt(entry.file, effectiveApiKey);
+      setQueue((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, status: "success", result, errorMessage: undefined } : item
+        )
+      );
+      showToast("已重新识别该图片。");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "识别失败";
+      setQueue((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, status: "error", errorMessage: message } : item))
+      );
+    }
   };
 
   const exportExcel = () => {
@@ -289,17 +331,38 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
                     </p>
                     {item.errorMessage && <p className="truncate text-xs text-red-500">{item.errorMessage}</p>}
                   </div>
-                  <span className="rounded-full px-2 py-1 text-xs">
+                  <span className="flex shrink-0 items-center gap-0.5">
                     {item.status === "processing" ? (
-                      <LoaderCircle className="h-4 w-4 animate-spin text-blue-500" />
+                      <span className="rounded-full p-1.5">
+                        <LoaderCircle className="h-4 w-4 animate-spin text-blue-500" />
+                      </span>
                     ) : (
-                      <Trash2
-                        className="h-4 w-4 text-gray-400 transition group-hover:text-red-500"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          removeFile(item.id);
-                        }}
-                      />
+                      <>
+                        <button
+                          type="button"
+                          className="touch-manipulation rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-blue-600 dark:hover:bg-gray-700/80 dark:hover:text-blue-400"
+                          title="重新识别此图"
+                          aria-label="重新识别此图"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void reRecognizeOne(item.id);
+                          }}
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="touch-manipulation rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-700/80"
+                          title="移除"
+                          aria-label="移除"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            removeFile(item.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
                     )}
                   </span>
                 </button>
@@ -454,7 +517,7 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
 
           <p className="pointer-events-none absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 max-w-[90vw] -translate-x-1/2 px-2 text-center text-[10px] text-white/50 sm:text-xs">
             <span className="hidden sm:inline">滚轮缩放 · </span>
-            拖动平移 · 松手归中 · 双击重置
+            拖动平移 · 松手归中 · 双击重置 · Esc 关闭
           </p>
         </div>
       )}
