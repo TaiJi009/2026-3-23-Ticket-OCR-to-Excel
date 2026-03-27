@@ -1,4 +1,11 @@
+import { useMemo, useState } from "react";
+import SortableTh from "./SortableTh";
 import type { Receipt, ReceiptItem } from "../types/receipt";
+import {
+  sortIndicesForReceipt,
+  type ReceiptColumnKey,
+  type SortDir
+} from "../lib/receiptTableSort";
 
 interface ReceiptTableProps {
   receipt: Receipt;
@@ -12,6 +19,23 @@ function toNumber(value: string): number | null {
 }
 
 export default function ReceiptTable({ receipt, onChange }: ReceiptTableProps) {
+  const [sortKey, setSortKey] = useState<ReceiptColumnKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const handleSort = (key: ReceiptColumnKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sortedIndices = useMemo(
+    () => sortIndicesForReceipt(receipt, sortKey, sortDir),
+    [receipt, sortKey, sortDir]
+  );
+
   const updateItem = (index: number, key: keyof ReceiptItem, value: string) => {
     const items = receipt.items.map((item, currentIndex) => {
       if (currentIndex !== index) return item;
@@ -37,7 +61,7 @@ export default function ReceiptTable({ receipt, onChange }: ReceiptTableProps) {
     <section className="card overflow-hidden p-3 sm:p-4 md:p-5">
       <h2 className="mb-2 text-sm font-semibold text-gray-800 dark:text-gray-100">校对与编辑</h2>
       <p className="mb-3 text-[11px] text-gray-500 md:hidden dark:text-gray-400">
-        小屏下「时间 / 超市」在下方；商品表可左右滑动查看全部列。
+        小屏下「时间 / 超市」在下方；商品表可左右滑动；点击表头可排序。
       </p>
 
       {/* 移动端：时间与超市单独一块（上图下表 / 避免六列表格过窄） */}
@@ -68,12 +92,54 @@ export default function ReceiptTable({ receipt, onChange }: ReceiptTableProps) {
         <table className="min-w-[min(100%,36rem)] w-full text-xs sm:min-w-0 sm:text-sm">
           <thead>
             <tr className="bg-gray-100 text-left text-gray-700 dark:bg-gray-700/50 dark:text-gray-200">
-              <th className={thHiddenMd}>购物时间</th>
-              <th className={thHiddenMd}>超市名称</th>
-              <th className={thVisible}>商品名称</th>
-              <th className={thVisible}>数量</th>
-              <th className={thVisible}>单价</th>
-              <th className={thVisible}>小计</th>
+              <SortableTh
+                label="购物时间"
+                columnKey="date"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={handleSort}
+                className={thHiddenMd}
+              />
+              <SortableTh
+                label="超市名称"
+                columnKey="store"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={handleSort}
+                className={thHiddenMd}
+              />
+              <SortableTh
+                label="商品名称"
+                columnKey="name"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={handleSort}
+                className={thVisible}
+              />
+              <SortableTh
+                label="数量"
+                columnKey="qty"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={handleSort}
+                className={thVisible}
+              />
+              <SortableTh
+                label="单价"
+                columnKey="price"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={handleSort}
+                className={thVisible}
+              />
+              <SortableTh
+                label="小计"
+                columnKey="subtotal"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={handleSort}
+                className={thVisible}
+              />
             </tr>
           </thead>
           <tbody>
@@ -100,57 +166,60 @@ export default function ReceiptTable({ receipt, onChange }: ReceiptTableProps) {
                 </td>
               </tr>
             ) : (
-              receipt.items.map((item, index) => (
-                <tr key={index} className="border-b border-gray-100 dark:border-gray-700">
-                  <td className={`${tdHiddenMd} align-top`}>
-                    <input
-                      value={receipt.date ?? ""}
-                      onChange={(event) => onChange({ ...receipt, date: event.target.value })}
-                      className={metaInputCls}
-                      placeholder="YYYY-MM-DD HH:mm"
-                    />
-                  </td>
-                  <td className={`${tdHiddenMd} align-top`}>
-                    <input
-                      value={receipt.storeName ?? ""}
-                      onChange={(event) => onChange({ ...receipt, storeName: event.target.value })}
-                      className={metaInputCls}
-                      placeholder="超市名称"
-                    />
-                  </td>
-                  <td className={tdCell}>
-                    <input
-                      value={item.name}
-                      onChange={(event) => updateItem(index, "name", event.target.value)}
-                      className={inputCls}
-                    />
-                  </td>
-                  <td className={tdCell}>
-                    <input
-                      inputMode="decimal"
-                      value={item.quantity ?? ""}
-                      onChange={(event) => updateItem(index, "quantity", event.target.value)}
-                      className={inputCls}
-                    />
-                  </td>
-                  <td className={tdCell}>
-                    <input
-                      inputMode="decimal"
-                      value={item.price ?? ""}
-                      onChange={(event) => updateItem(index, "price", event.target.value)}
-                      className={inputCls}
-                    />
-                  </td>
-                  <td className={tdCell}>
-                    <input
-                      inputMode="decimal"
-                      value={item.subtotal ?? ""}
-                      onChange={(event) => updateItem(index, "subtotal", event.target.value)}
-                      className={inputCls}
-                    />
-                  </td>
-                </tr>
-              ))
+              sortedIndices.map((index) => {
+                const item = receipt.items[index]!;
+                return (
+                  <tr key={index} className="border-b border-gray-100 dark:border-gray-700">
+                    <td className={`${tdHiddenMd} align-top`}>
+                      <input
+                        value={receipt.date ?? ""}
+                        onChange={(event) => onChange({ ...receipt, date: event.target.value })}
+                        className={metaInputCls}
+                        placeholder="YYYY-MM-DD HH:mm"
+                      />
+                    </td>
+                    <td className={`${tdHiddenMd} align-top`}>
+                      <input
+                        value={receipt.storeName ?? ""}
+                        onChange={(event) => onChange({ ...receipt, storeName: event.target.value })}
+                        className={metaInputCls}
+                        placeholder="超市名称"
+                      />
+                    </td>
+                    <td className={tdCell}>
+                      <input
+                        value={item.name}
+                        onChange={(event) => updateItem(index, "name", event.target.value)}
+                        className={inputCls}
+                      />
+                    </td>
+                    <td className={tdCell}>
+                      <input
+                        inputMode="decimal"
+                        value={item.quantity ?? ""}
+                        onChange={(event) => updateItem(index, "quantity", event.target.value)}
+                        className={inputCls}
+                      />
+                    </td>
+                    <td className={tdCell}>
+                      <input
+                        inputMode="decimal"
+                        value={item.price ?? ""}
+                        onChange={(event) => updateItem(index, "price", event.target.value)}
+                        className={inputCls}
+                      />
+                    </td>
+                    <td className={tdCell}>
+                      <input
+                        inputMode="decimal"
+                        value={item.subtotal ?? ""}
+                        onChange={(event) => updateItem(index, "subtotal", event.target.value)}
+                        className={inputCls}
+                      />
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

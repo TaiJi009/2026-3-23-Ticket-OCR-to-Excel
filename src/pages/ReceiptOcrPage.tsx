@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { flushSync } from "react-dom";
 import ApiKeyInput from "../components/ApiKeyInput";
 import ImageUploader from "../components/ImageUploader";
+import MergedReceiptTable from "../components/MergedReceiptTable";
 import ReceiptTable from "../components/ReceiptTable";
 import { resolveZhipuApiKey } from "../config/builtinApi";
 import { exportReceiptsToExcel, type ExportMode } from "../lib/exportExcel";
@@ -154,6 +155,13 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
   );
 
   const completedCount = queue.filter((item) => item.status === "success").length;
+
+  const hasAnySuccessResult = useMemo(
+    () => queue.some((q) => q.status === "success" && q.result),
+    [queue]
+  );
+
+  const showMergedEditor = exportMode === "merged" && hasAnySuccessResult;
 
   const showToast = (message: string) => {
     setToast(message);
@@ -386,17 +394,50 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
         </div>
       )}
 
-      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-3 py-4 sm:gap-5 sm:px-4 sm:py-5 md:grid-cols-2 md:gap-5 lg:grid-cols-[1.1fr_1.3fr] lg:gap-6">
-        <section className="space-y-4">
-          <ApiKeyInput
+      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-5">
+        <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-[minmax(260px,360px)_1fr] lg:items-start lg:gap-6">
+          {/* 左侧（大屏）：原图预览；移动端顺序在工具区之后 */}
+          <aside className="order-2 lg:order-1 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-4 lg:self-start">
+            <section className="card flex flex-col p-3 sm:p-4">
+              <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">原图预览</h2>
+              {!selected ? (
+                <div className="flex min-h-[200px] flex-1 items-center justify-center rounded-xl bg-gray-50 px-3 text-center text-xs text-gray-500 dark:bg-gray-900/40 dark:text-gray-400 sm:min-h-[240px] sm:text-sm">
+                  上传图片后在此查看大图；点击可全屏预览。
+                </div>
+              ) : (
+                <div
+                  className="group/preview relative flex-1 cursor-zoom-in touch-manipulation overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-900/40"
+                  onClick={() => {
+                    setLightboxZoom(1);
+                    setLightboxPan({ x: 0, y: 0 });
+                    setLightboxDragging(false);
+                    setLightboxUrl(selected.previewUrl);
+                  }}
+                >
+                  <img
+                    src={selected.previewUrl}
+                    alt={selected.file.name}
+                    className="max-h-[min(70vh,28rem)] w-full object-contain sm:max-h-[min(75vh,32rem)]"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/10 transition-colors group-hover/preview:bg-black/25 md:bg-black/0 md:group-hover/preview:bg-black/25">
+                    <ZoomIn className="h-7 w-7 text-white opacity-70 drop-shadow transition-opacity sm:h-8 sm:w-8 md:opacity-0 md:group-hover/preview:opacity-100" />
+                  </div>
+                </div>
+              )}
+            </section>
+          </aside>
+
+          {/* 右侧上：API / 上传 / 队列 */}
+          <section className="order-1 space-y-4 lg:order-2 lg:col-start-2 lg:row-start-1">
+            <ApiKeyInput
             mode={apiKeySourceMode}
             onModeChange={setApiKeySource}
             customKeyValue={apiKey}
             onSaveCustomKey={saveApiKey}
-          />
-          <ImageUploader onAddFiles={handleRequestAddFiles} />
+            />
+            <ImageUploader onAddFiles={handleRequestAddFiles} />
 
-          <section className="card">
+            <section className="card">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold">待识别队列</h2>
               <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -528,41 +569,22 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
                 导出 Excel
               </button>
             </div>
+            </section>
           </section>
-        </section>
 
-        <section>
-          {!selected?.result ? (
-            <div className="card flex min-h-[min(42vh,16rem)] items-center justify-center px-3 text-center text-xs text-gray-500 sm:min-h-[420px] sm:text-sm dark:text-gray-400">
-              上传并识别后，这里会显示可编辑的结构化结果。
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <section className="card">
-                <h2 className="mb-2 text-sm font-semibold">原图预览</h2>
-                <div
-                  className="group/preview relative cursor-zoom-in touch-manipulation"
-                  onClick={() => {
-                    setLightboxZoom(1);
-                    setLightboxPan({ x: 0, y: 0 });
-                    setLightboxDragging(false);
-                    setLightboxUrl(selected.previewUrl);
-                  }}
-                >
-                  <img
-                    src={selected.previewUrl}
-                    alt={selected.file.name}
-                    className="max-h-[min(45vh,20rem)] w-full rounded-xl object-contain sm:max-h-[320px]"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/10 transition-colors group-hover/preview:bg-black/25 md:bg-black/0 md:group-hover/preview:bg-black/25">
-                    <ZoomIn className="h-7 w-7 text-white opacity-70 drop-shadow transition-opacity sm:h-8 sm:w-8 md:opacity-0 md:group-hover/preview:opacity-100" />
-                  </div>
-                </div>
-              </section>
+          {/* 右侧下：校对与编辑（无结果时为占位） */}
+          <section className="order-3 min-w-0 lg:order-2 lg:col-start-2 lg:row-start-2">
+            {showMergedEditor ? (
+              <MergedReceiptTable queue={queue} onUpdateReceipt={updateReceipt} />
+            ) : !selected?.result ? (
+              <div className="card flex min-h-[min(42vh,16rem)] items-center justify-center px-3 text-center text-xs text-gray-500 sm:min-h-[280px] sm:text-sm dark:text-gray-400">
+                上传并识别后，这里会显示可编辑的结构化结果。
+              </div>
+            ) : (
               <ReceiptTable receipt={selected.result} onChange={(next) => updateReceipt(selected.id, next)} />
-            </div>
-          )}
-        </section>
+            )}
+          </section>
+        </div>
       </main>
 
       {toast && (
