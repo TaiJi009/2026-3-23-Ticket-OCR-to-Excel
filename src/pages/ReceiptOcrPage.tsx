@@ -92,6 +92,9 @@ export default function ReceiptOcrPage() {
   /** 队列已有图片时，本次待确认的新增文件 */
   const [pendingUploadFiles, setPendingUploadFiles] = useState<File[] | null>(null);
   const queueRef = useRef(queue);
+  /** 大屏下与「原图预览」卡片等高：测量预览区高度后赋给子集 Z（API+上传 | 队列） */
+  const previewCardRef = useRef<HTMLElement | null>(null);
+  const [lgSubsetZHeightPx, setLgSubsetZHeightPx] = useState<number | null>(null);
 
   const effectiveApiKey = useMemo(
     () => resolveZhipuApiKey(apiKeySourceMode, apiKey),
@@ -112,6 +115,32 @@ export default function ReceiptOcrPage() {
   useEffect(() => {
     queueRef.current = queue;
   }, [queue]);
+
+  useLayoutEffect(() => {
+    const el = previewCardRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+
+    const mq = window.matchMedia("(min-width: 1024px)");
+
+    const apply = () => {
+      if (!mq.matches) {
+        setLgSubsetZHeightPx(null);
+        return;
+      }
+      const h = el.getBoundingClientRect().height;
+      if (h > 0) setLgSubsetZHeightPx(Math.round(h * 10) / 10);
+    };
+
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    mq.addEventListener("change", apply);
+    apply();
+
+    return () => {
+      ro.disconnect();
+      mq.removeEventListener("change", apply);
+    };
+  }, []);
 
   const closeLightbox = useCallback(() => {
     setLightboxUrl(null);
@@ -435,7 +464,7 @@ export default function ReceiptOcrPage() {
         <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-[minmax(260px,360px)_1fr] lg:items-start lg:gap-6">
           {/* 左侧（大屏）：原图预览；移动端顺序在工具区之后 */}
           <aside className="order-2 lg:order-1 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-4 lg:self-start">
-            <section className="card flex flex-col p-3 sm:p-4">
+            <section ref={previewCardRef} className="card flex flex-col p-3 sm:p-4">
               <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">原图预览</h2>
               {!selected ? (
                 <div className="flex min-h-[200px] flex-1 items-center justify-center rounded-xl bg-gray-50 px-3 text-center text-xs text-gray-500 dark:bg-gray-900/40 dark:text-gray-400 sm:min-h-[240px] sm:text-sm">
@@ -465,10 +494,21 @@ export default function ReceiptOcrPage() {
           </aside>
 
           {/* 右侧上：子集 Z = 子集 A（API Key 上 + 上传下）| 子集 B（待识别队列） */}
-          <section className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(240px,360px)_minmax(0,1fr)] lg:items-stretch lg:gap-4">
-              {/* 子集 A：高度随 API 区展开而增高；上传区 flex-1 占满其下剩余空间，不与 API 重叠 */}
-              <div className="flex min-h-0 min-w-0 flex-col gap-4 lg:h-full">
+          <section
+            className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:min-h-0"
+            style={
+              lgSubsetZHeightPx != null
+                ? { height: lgSubsetZHeightPx, minHeight: lgSubsetZHeightPx }
+                : undefined
+            }
+          >
+            <div className="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(240px,360px)_minmax(0,1fr)] lg:items-stretch lg:gap-4">
+              {/* 子集 A：大屏高度与预览一致，内部自上而下排列；内容过高时左侧整体滚动 */}
+              <div
+                className={`flex min-h-0 min-w-0 flex-col gap-4 lg:h-full ${
+                  lgSubsetZHeightPx != null ? "scrollbar-hide lg:overflow-x-hidden lg:overflow-y-auto" : ""
+                }`}
+              >
                 <ApiKeyInput
                   mode={apiKeySourceMode}
                   onModeChange={setApiKeySource}
