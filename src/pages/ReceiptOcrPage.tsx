@@ -1,5 +1,6 @@
 import { Download, LoaderCircle, Play, RefreshCw, Trash2, X, ZoomIn } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import ApiKeyInput from "../components/ApiKeyInput";
 import ImageUploader from "../components/ImageUploader";
 import ReceiptTable from "../components/ReceiptTable";
@@ -46,6 +47,8 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
   const lightboxDragOriginRef = useRef({ startX: 0, startY: 0, panX: 0, panY: 0 });
   const lightboxWasDraggingRef = useRef(false);
   const [exportMode, setExportMode] = useState<ExportMode>("separate");
+  /** 队列已有图片时，本次待确认的新增文件 */
+  const [pendingUploadFiles, setPendingUploadFiles] = useState<File[] | null>(null);
   const queueRef = useRef(queue);
 
   const effectiveApiKey = useMemo(
@@ -157,12 +160,83 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
     window.setTimeout(() => setToast(""), 2200);
   };
 
-  const addFiles = (files: File[]) => {
-    setQueue((prev) => {
-      const next = [...prev, ...files.map(newQueueFile)];
-      if (!selectedId && next[0]) setSelectedId(next[0].id);
-      return next;
+  const commitAddFiles = useCallback((files: File[]) => {
+    const newItems = files.map(newQueueFile);
+    flushSync(() => {
+      setQueue((prev) => {
+        const next = [...prev, ...newItems];
+        setSelectedId((cur) => (cur ? cur : next[0]?.id ?? null));
+        return next;
+      });
     });
+    return newItems;
+  }, []);
+
+  const handleRequestAddFiles = (files: File[]) => {
+    if (!files.length) return;
+    if (queue.length === 0) {
+      commitAddFiles(files);
+      return;
+    }
+    setPendingUploadFiles(files);
+  };
+
+  const dismissUploadDialog = useCallback(() => setPendingUploadFiles(null), []);
+
+  useEffect(() => {
+    if (!pendingUploadFiles) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") dismissUploadDialog();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [pendingUploadFiles, dismissUploadDialog]);
+
+  const runRecognitionForNewEntries = async (entries: QueueFile[]) => {
+    if (!effectiveApiKey.trim()) {
+      showToast(
+        apiKeySourceMode === "custom"
+          ? "当前为自定义 API：请先填写并保存你的智谱 API Key。"
+          : "站点默认 API 不可用，请联系管理员。"
+      );
+      return;
+    }
+    if (entries.length === 0) return;
+
+    setIsRecognizing(true);
+    for (const entry of entries) {
+      setQueue((prev) =>
+        prev.map((item) => (item.id === entry.id ? { ...item, status: "processing", errorMessage: undefined } : item))
+      );
+      try {
+        const result = await recognizeReceipt(entry.file, effectiveApiKey);
+        setQueue((prev) =>
+          prev.map((item) =>
+            item.id === entry.id ? { ...item, status: "success", result, errorMessage: undefined } : item
+          )
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "识别失败";
+        setQueue((prev) =>
+          prev.map((item) => (item.id === entry.id ? { ...item, status: "error", errorMessage: message } : item))
+        );
+      }
+    }
+    setIsRecognizing(false);
+    showToast("新增图片识别已结束。");
+  };
+
+  const confirmUploadAddOnly = () => {
+    if (!pendingUploadFiles) return;
+    commitAddFiles(pendingUploadFiles);
+    dismissUploadDialog();
+  };
+
+  const confirmUploadAndRecognize = () => {
+    if (!pendingUploadFiles) return;
+    const newItems = commitAddFiles(pendingUploadFiles);
+    dismissUploadDialog();
+    void runRecognitionForNewEntries(newItems);
   };
 
   const removeFile = (id: string) => {
@@ -272,6 +346,46 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
 
   return (
     <>
+      {pendingUploadFiles && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="upload-dialog-title"
+          onClick={(e) => e.target === e.currentTarget && dismissUploadDialog()}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-600 dark:bg-gray-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="upload-dialog-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              新增图片
+            </h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              队列中已有图片。是否仅对本次新增的{" "}
+              <strong className="text-gray-900 dark:text-gray-100">{pendingUploadFiles.length}</strong>{" "}
+              张一次性识别？已识别过的图片不会再次识别。
+            </p>
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button type="button" className="btn-secondary w-full justify-center sm:w-auto" onClick={dismissUploadDialog}>
+                取消
+              </button>
+              <button type="button" className="btn-secondary w-full justify-center sm:w-auto" onClick={confirmUploadAddOnly}>
+                仅添加
+              </button>
+              <button
+                type="button"
+                className="btn-primary w-full justify-center sm:w-auto"
+                disabled={isRecognizing}
+                onClick={confirmUploadAndRecognize}
+              >
+                {isRecognizing ? "识别进行中…" : "识别新增"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-3 py-4 sm:gap-5 sm:px-4 sm:py-5 md:grid-cols-2 md:gap-5 lg:grid-cols-[1.1fr_1.3fr] lg:gap-6">
         <section className="space-y-4">
           <ApiKeyInput
@@ -280,7 +394,7 @@ export default function ReceiptOcrPage({ onApiStatusChange }: ReceiptOcrPageProp
             customKeyValue={apiKey}
             onSaveCustomKey={saveApiKey}
           />
-          <ImageUploader onAddFiles={addFiles} />
+          <ImageUploader onAddFiles={handleRequestAddFiles} />
 
           <section className="card">
             <div className="mb-3 flex items-center justify-between">
