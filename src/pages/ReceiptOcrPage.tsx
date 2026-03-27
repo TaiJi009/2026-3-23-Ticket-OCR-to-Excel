@@ -468,7 +468,7 @@ export default function ReceiptOcrPage() {
           <section className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(240px,360px)_minmax(0,1fr)] lg:items-start lg:gap-4">
               {/* 子集 A */}
-              <div className="flex min-h-0 min-w-0 flex-col gap-4 lg:min-h-[min(24rem,46vh)]">
+              <div className="flex min-h-0 min-w-0 flex-col gap-4 lg:h-[var(--receipt-subset-z-height)] lg:min-h-0">
                 <ApiKeyInput
                   mode={apiKeySourceMode}
                   onModeChange={setApiKeySource}
@@ -483,7 +483,7 @@ export default function ReceiptOcrPage() {
               </div>
               {/* 子集 B */}
               <div className="flex min-h-0 min-w-0 flex-col overflow-hidden lg:w-full">
-                <section className="card flex h-[min(20rem,42vh)] min-h-[18rem] w-full min-w-0 flex-col overflow-hidden sm:h-[min(22rem,44vh)] lg:h-[min(24rem,46vh)]">
+                <section className="card flex min-h-[min(14rem,40vh)] w-full min-w-0 flex-col overflow-hidden lg:h-[var(--receipt-subset-z-height)] lg:min-h-0">
             <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-1">
                 <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">待识别队列</h2>
@@ -502,7 +502,7 @@ export default function ReceiptOcrPage() {
                 已完成 {completedCount}/{queue.length}
               </span>
             </div>
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-x-hidden overflow-y-auto pr-0.5">
+            <div className="scrollbar-hide flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-x-hidden overflow-y-auto">
               {queue.length === 0 && (
                 <p className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-600 dark:bg-slate-700/50 dark:text-slate-300">
                   还没有上传图片
