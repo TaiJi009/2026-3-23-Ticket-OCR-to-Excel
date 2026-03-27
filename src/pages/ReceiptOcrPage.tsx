@@ -234,6 +234,11 @@ export default function ReceiptOcrPage() {
       commitAddFiles(files);
       return;
     }
+    /** 尚未进行任何识别（全部为等待中）时，直接追加，不问是否只识别新增 */
+    if (queue.every((q) => q.status === "pending")) {
+      commitAddFiles(files);
+      return;
+    }
     setPendingUploadFiles(files);
   };
 
