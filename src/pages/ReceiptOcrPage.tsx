@@ -98,7 +98,6 @@ export default function ReceiptOcrPage() {
   const [lightboxDragging, setLightboxDragging] = useState(false);
   const lightboxRef = useRef<HTMLDivElement>(null);
   const lightboxDragOriginRef = useRef({ startX: 0, startY: 0, panX: 0, panY: 0 });
-  const lightboxWasDraggingRef = useRef(false);
   const [exportMode, setExportMode] = useState<ExportMode>("separate");
   /** 队列已有图片时，本次待确认的新增文件 */
   const [pendingUploadFiles, setPendingUploadFiles] = useState<File[] | null>(null);
@@ -181,17 +180,6 @@ export default function ReceiptOcrPage() {
       document.removeEventListener("pointercancel", onUp);
     };
   }, [lightboxDragging]);
-
-  useEffect(() => {
-    if (!lightboxUrl) {
-      lightboxWasDraggingRef.current = false;
-      return;
-    }
-    if (lightboxWasDraggingRef.current && !lightboxDragging) {
-      setLightboxPan({ x: 0, y: 0 });
-    }
-    lightboxWasDraggingRef.current = lightboxDragging;
-  }, [lightboxUrl, lightboxDragging]);
 
   useEffect(() => {
     if (!lightboxUrl) return;
@@ -792,7 +780,7 @@ export default function ReceiptOcrPage() {
 
           <p className="pointer-events-none absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 max-w-[90vw] -translate-x-1/2 px-2 text-center text-[10px] text-white/50 sm:text-xs">
             <span className="hidden sm:inline">滚轮缩放 · </span>
-            拖动平移 · 松手归中 · 双击重置 · Esc 关闭
+            拖动平移 · 双击重置 · Esc 关闭
           </p>
         </div>
       )}
